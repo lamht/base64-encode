@@ -1,0 +1,54 @@
+name: Build and Release JAR
+
+on:
+  push:
+    branches:
+      - main  # Hoặc branch bạn muốn trigger workflow
+  # Tạo release khi có một tag mới
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout mã nguồn từ repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Cài đặt Java
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'adoptopenjdk'
+
+    # Cài đặt Maven
+    - name: Set up Maven
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        maven-version: '3.8.1'
+
+    # Build project với Maven
+    - name: Build with Maven
+      run: mvn clean package -DskipTests
+
+    # Tạo release nếu có tag
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        VERSION_TAG=$(echo ${GITHUB_REF#refs/tags/})
+        gh release create $VERSION_TAG target/*.jar --title "Release $VERSION_TAG" --notes "Release version $VERSION_TAG"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Tải file JAR lên Release
+    - name: Upload JAR to Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: target/*.jar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
