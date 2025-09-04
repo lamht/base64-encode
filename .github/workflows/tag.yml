@@ -1,9 +1,8 @@
-name: Create Git Tag on Push
+name: Create Git Tag on Push or Manually
 
+# Trigger manually or on push to the main branch
 on:
-  push:
-    branches:
-      - main  # Trigger workflow on push to the main branch
+  workflow_dispatch:  # Allows manual trigger from GitHub Actions UI
 
 jobs:
   create-tag:
@@ -20,14 +19,14 @@ jobs:
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
 
-    # Step 3: Get the latest Git tag
+    # Step 3: Get the latest Git tag (if any)
     - name: Get the latest Git tag
       id: get_tag
       run: |
         # Fetch all tags from the repository
         git fetch --tags
-        # Get the latest tag
-        latest_tag=$(git describe --tags --abbrev=0)
+        # Try to get the latest tag, fallback to v1.0.0 if no tags exist
+        latest_tag=$(git describe --tags --abbrev=0 || echo "v1.0.0")
         echo "Latest tag: $latest_tag"
         echo "latest_tag=$latest_tag" >> $GITHUB_ENV
 
