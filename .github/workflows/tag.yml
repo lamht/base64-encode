@@ -1,0 +1,64 @@
+name: Create Git Tag on Push
+
+on:
+  push:
+    branches:
+      - main  # Trigger workflow on push to the main branch
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Set up Git for creating tags
+    - name: Set up Git
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+    # Step 3: Get the latest tag from the repository
+    - name: Get the latest Git tag
+      id: get_tag
+      run: |
+        # Fetch all tags from the repository
+        git fetch --tags
+        # Get the latest tag
+        latest_tag=$(git describe --tags --abbrev=0)
+        echo "Latest tag: $latest_tag"
+        echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
+    # Step 4: Increment the version based on the latest tag
+    - name: Increment version
+      id: increment_version
+      run: |
+        # Extract the version components from the latest tag (e.g., v1.0.0)
+        IFS='.' read -r -a version_parts <<< "${{ env.latest_tag#v }}"
+        major=${version_parts[0]}
+        minor=${version_parts[1]}
+        patch=${version_parts[2]}
+
+        # Increment the patch version by 1
+        new_patch=$((patch + 1))
+        new_version="v$major.$minor.$new_patch"
+
+        # Set the new version as an environment variable
+        echo "new_version=$new_version" >> $GITHUB_ENV
+        echo "New version: $new_version"
+
+    # Step 5: Tag the repository with the new version
+    - name: Create Git tag
+      run: |
+        git tag ${{ env.new_version }}
+        git push origin ${{ env.new_version }}
+
+    # Optional Step: Create a release with the new tag
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: target/*.jar  # Upload your build artifacts (e.g., JAR files)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
